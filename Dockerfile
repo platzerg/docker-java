@@ -1,45 +1,44 @@
-#
-# NOTE: THIS DOCKERFILE IS GENERATED VIA "update.sh"
-#
-# PLEASE DO NOT EDIT IT DIRECTLY.
-#
+# see https://registry.hub.docker.com/u/frolvlad/alpine-oraclejdk8/
+FROM frolvlad/alpine-glibc:alpine-3.7
 
-FROM alpine:3.7
+ENV JAVA_VERSION=8 \
+    JAVA_UPDATE=162 \
+    JAVA_BUILD=12 \
+    JAVA_PATH=0da788060d494f5095bf8624735fa2f1 \
+    JAVA_HOME="/usr/lib/jvm/default-jvm"
 
-# A few reasons for installing distribution-provided OpenJDK:
-#
-#  1. Oracle.  Licensing prevents us from redistributing the official JDK.
-#
-#  2. Compiling OpenJDK also requires the JDK to be installed, and it gets
-#     really hairy.
-#
-#     For some sample build times, see Debian's buildd logs:
-#       https://buildd.debian.org/status/logs.php?pkg=openjdk-8
-
-# Default to UTF-8 file.encoding
-ENV LANG C.UTF-8
-
-# add a simple script that can auto-detect the appropriate JAVA_HOME value
-# based on whether the JDK or only the JRE is installed
-RUN { \
-		echo '#!/bin/sh'; \
-		echo 'set -e'; \
-		echo; \
-		echo 'dirname "$(dirname "$(readlink -f "$(which javac || which java)")")"'; \
-	} > /usr/local/bin/docker-java-home \
-	&& chmod +x /usr/local/bin/docker-java-home
-ENV JAVA_HOME /usr/lib/jvm/java-1.8-openjdk
-ENV PATH $PATH:/usr/lib/jvm/java-1.8-openjdk/jre/bin:/usr/lib/jvm/java-1.8-openjdk/bin
-
-ENV JAVA_VERSION 8u151
-ENV JAVA_ALPINE_VERSION 8.151.12-r0
-
-RUN set -x \
-	&& apk add --no-cache \
-		openjdk8="$JAVA_ALPINE_VERSION" \
-	&& [ "$JAVA_HOME" = "$(docker-java-home)" ]
-
-# If you're reading this and have any feedback on how this image could be
-# improved, please open an issue or a pull request so we can discuss it!
-#
-#   https://github.com/docker-library/openjdk/issues
+RUN apk add --no-cache --virtual=build-dependencies wget ca-certificates unzip && \
+    cd "/tmp" && \
+    wget --header "Cookie: oraclelicense=accept-securebackup-cookie;" \
+        "http://download.oracle.com/otn-pub/java/jdk/${JAVA_VERSION}u${JAVA_UPDATE}-b${JAVA_BUILD}/${JAVA_PATH}/jdk-${JAVA_VERSION}u${JAVA_UPDATE}-linux-x64.tar.gz" && \
+    tar -xzf "jdk-${JAVA_VERSION}u${JAVA_UPDATE}-linux-x64.tar.gz" && \
+    mkdir -p "/usr/lib/jvm" && \
+    mv "/tmp/jdk1.${JAVA_VERSION}.0_${JAVA_UPDATE}" "/usr/lib/jvm/java-${JAVA_VERSION}-oracle" && \
+    ln -s "java-${JAVA_VERSION}-oracle" "$JAVA_HOME" && \
+    ln -s "$JAVA_HOME/bin/"* "/usr/bin/" && \
+    rm -rf "$JAVA_HOME/"*src.zip && \
+    rm -rf "$JAVA_HOME/lib/missioncontrol" \
+           "$JAVA_HOME/lib/visualvm" \
+           "$JAVA_HOME/lib/"*javafx* \
+           "$JAVA_HOME/jre/lib/plugin.jar" \
+           "$JAVA_HOME/jre/lib/ext/jfxrt.jar" \
+           "$JAVA_HOME/jre/bin/javaws" \
+           "$JAVA_HOME/jre/lib/javaws.jar" \
+           "$JAVA_HOME/jre/lib/desktop" \
+           "$JAVA_HOME/jre/plugin" \
+           "$JAVA_HOME/jre/lib/"deploy* \
+           "$JAVA_HOME/jre/lib/"*javafx* \
+           "$JAVA_HOME/jre/lib/"*jfx* \
+           "$JAVA_HOME/jre/lib/amd64/libdecora_sse.so" \
+           "$JAVA_HOME/jre/lib/amd64/"libprism_*.so \
+           "$JAVA_HOME/jre/lib/amd64/libfxplugins.so" \
+           "$JAVA_HOME/jre/lib/amd64/libglass.so" \
+           "$JAVA_HOME/jre/lib/amd64/libgstreamer-lite.so" \
+           "$JAVA_HOME/jre/lib/amd64/"libjavafx*.so \
+           "$JAVA_HOME/jre/lib/amd64/"libjfx*.so && \
+    wget --header "Cookie: oraclelicense=accept-securebackup-cookie;" \
+        "http://download.oracle.com/otn-pub/java/jce/${JAVA_VERSION}/jce_policy-${JAVA_VERSION}.zip" && \
+    unzip -jo -d "${JAVA_HOME}/jre/lib/security" "jce_policy-${JAVA_VERSION}.zip" && \
+    rm "${JAVA_HOME}/jre/lib/security/README.txt" && \
+    apk del build-dependencies && \
+    rm "/tmp/"*
